@@ -126,7 +126,7 @@ export const verifyOtp = async (req: Request, res: Response): Promise<void> => {
     let nextStep = 'role_selection';
     if (user.role === 'admin') nextStep = 'admin_dashboard';
     else if (user.role === 'farmer') nextStep = 'farmer_home';
-    else if (user.role === 'organization') nextStep = 'org_dashboard';
+    else if (user.role === 'organization' || user.role === 'project_developer') nextStep = 'org_dashboard';
     else if (user.role === 'field_agent') nextStep = 'agent_dashboard';
 
     // Issue JWT Token
@@ -271,6 +271,7 @@ export const getMe = async (req: AuthRequest, res: Response): Promise<void> => {
         id: user._id,
         phone: user.phone,
         fullName: user.fullName,
+        fatherOrHusbandName: user.fatherOrHusbandName,
         photoUrl: user.photoUrl,
         dob: user.dob,
         age: user.age,
@@ -278,6 +279,7 @@ export const getMe = async (req: AuthRequest, res: Response): Promise<void> => {
         city: user.city,
         district: user.district,
         state: user.state,
+        pincode: user.pincode,
         preferredLanguage: user.preferredLanguage,
         role: user.role,
         status: user.status,

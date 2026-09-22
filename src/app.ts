@@ -50,6 +50,7 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/roles-permissions', rolesPermissionsRoutes);
 app.use('/api/v1/organizations', organizationRoutes);
+app.use('/api/v1/project-developers', organizationRoutes);
 app.use('/api/v1/kyc', kycRoutes);
 app.use('/api/v1/bank-payout-profile', bankPayoutProfileRoutes);
 app.use('/api/v1/lands', landRoutes);

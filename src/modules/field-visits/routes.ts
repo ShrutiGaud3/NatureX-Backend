@@ -7,7 +7,7 @@ import { requireRole } from '../roles-permissions/middleware';
 
 const router = Router();
 
-router.post('/', authenticate, requireRole(['admin', 'organization']), validateCreateVisit, createVisit);
+router.post('/', authenticate, requireRole(['admin', 'project_developer', 'organization']), validateCreateVisit, createVisit);
 router.get('/', authenticate, getMyVisits);
 router.patch('/:id/start', authenticate, requireAssignedAgent, startVisit);
 router.post('/sync', authenticate, requireAssignedAgent, validateSyncVisit, syncOfflineVisit);

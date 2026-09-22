@@ -24,7 +24,7 @@ router.put('/profile', authenticate, requireActiveUser, validateUpdateProfile, u
 router.patch('/profile/language', authenticate, requireActiveUser, validateUpdateLanguage, updateLanguage);
 
 // Admin & Scoped Management Routes
-router.get('/', authenticate, requireRole(['admin', 'organization']), getAllUsers);
+router.get('/', authenticate, requireRole(['admin', 'project_developer', 'organization']), getAllUsers);
 router.get('/:id', authenticate, requireSelfOrAdmin, getUserById);
 router.patch('/:id/status', authenticate, requireRole(['admin']), validateUpdateStatus, updateUserStatus);
 

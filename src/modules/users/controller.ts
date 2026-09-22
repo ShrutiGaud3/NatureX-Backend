@@ -19,6 +19,7 @@ export const updateProfile = async (req: AuthRequest, res: Response): Promise<vo
   try {
     const {
       fullName,
+      fatherOrHusbandName,
       photoUrl,
       dob,
       age: providedAge,
@@ -41,6 +42,7 @@ export const updateProfile = async (req: AuthRequest, res: Response): Promise<vo
 
     const updateFields: any = {
       fullName,
+      fatherOrHusbandName,
       photoUrl,
       dob,
       age,

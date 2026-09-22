@@ -3,6 +3,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface IUser extends Document {
   phone: string;
   fullName?: string;
+  fatherOrHusbandName?: string;
   photoUrl?: string;
   dob?: Date;
   age?: number;
@@ -13,7 +14,7 @@ export interface IUser extends Document {
   state?: string;
   pincode?: string;
   preferredLanguage: 'en' | 'hi';
-  role: 'farmer' | 'organization' | 'field_agent' | 'admin' | 'unassigned';
+  role: string;
   status: 'draft' | 'submitted' | 'active' | 'suspended';
   organizationId?: mongoose.Types.ObjectId;
   createdAt: Date;
@@ -24,6 +25,7 @@ const UserSchema = new Schema<IUser>(
   {
     phone: { type: String, required: true, unique: true, index: true },
     fullName: { type: String, trim: true },
+    fatherOrHusbandName: { type: String, trim: true },
     photoUrl: { type: String },
     dob: { type: Date },
     age: { type: Number },
@@ -36,8 +38,8 @@ const UserSchema = new Schema<IUser>(
     preferredLanguage: { type: String, default: 'en', enum: ['en', 'hi'] },
     role: {
       type: String,
-      enum: ['farmer', 'organization', 'field_agent', 'admin', 'unassigned'],
-      default: 'unassigned'
+      default: 'unassigned',
+      index: true
     },
     status: {
       type: String,
