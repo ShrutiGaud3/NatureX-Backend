@@ -1,11 +1,12 @@
 import { Router } from 'express';
-import { sendOtp, resendOtp, verifyOtp, selectRole, getMe, logout, seedAdmin } from './controller';
+import { sendOtp, resendOtp, verifyOtp, selectRole, getMe, logout, seedAdmin, getOtpProviderStatus } from './controller';
 import { validateSendOtp, validateVerifyOtp, validateSelectRole } from './validations';
 import { authenticate } from './middleware';
 
 const router = Router();
 
-// Public Auth Endpoints (Screen S03, S04)
+// Public Auth & OTP Endpoints (Screen S03, S04)
+router.get('/otp-status', getOtpProviderStatus);
 router.post('/send-otp', validateSendOtp, sendOtp);
 router.post('/resend-otp', validateSendOtp, resendOtp);
 router.post('/verify-otp', validateVerifyOtp, verifyOtp);
