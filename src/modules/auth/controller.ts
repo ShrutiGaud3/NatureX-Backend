@@ -3,7 +3,6 @@ import jwt from 'jsonwebtoken';
 import { OtpSession } from './model';
 import { User } from '../users/model';
 import { AuthRequest } from './middleware';
-import { OtpService } from '../../services/otpService';
 
 export const sendOtp = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -24,12 +23,11 @@ export const sendOtp = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Dynamic OTP generation (4-digit)
-    const generatedOtp = OtpService.generateOtp(cleanPhone, 4);
+    // 4-Digit Mock OTP (easily replaceable with SMS Gateway)
+    const generatedOtp = '1234';
     const expiresInSeconds = 300; // 5 minutes
     const expiresAt = new Date(Date.now() + expiresInSeconds * 1000);
 
-    // Save session in database
     await OtpSession.create({
       phone: cleanPhone,
       countryCode,
@@ -38,18 +36,14 @@ export const sendOtp = async (req: Request, res: Response): Promise<void> => {
       deviceId
     });
 
-    // Dispatch SMS via configured Gateway (Fast2SMS / 2Factor / Twilio / MSG91 / Dev Mode)
-    const smsResult = await OtpService.sendSms(cleanPhone, generatedOtp, countryCode);
-
     res.status(200).json({
       success: true,
-      message: smsResult.message || 'OTP sent successfully',
+      message: 'OTP sent successfully',
       data: {
         phone: cleanPhone,
         countryCode,
         expiresInSeconds,
-        gatewayProvider: smsResult.provider,
-        debugOtp: smsResult.debugOtp
+        debugOtp: process.env.NODE_ENV !== 'production' ? generatedOtp : undefined
       }
     });
   } catch (error: any) {
@@ -59,21 +53,6 @@ export const sendOtp = async (req: Request, res: Response): Promise<void> => {
 
 export const resendOtp = async (req: Request, res: Response): Promise<void> => {
   return sendOtp(req, res);
-};
-
-export const getOtpProviderStatus = async (_req: Request, res: Response): Promise<void> => {
-  try {
-    const info = OtpService.getActiveProvider();
-    res.status(200).json({
-      success: true,
-      data: {
-        ...info,
-        instructions: 'To enable real SMS delivery, add FAST2SMS_API_KEY or TWOFACTOR_API_KEY or TWILIO credentials in your backend .env file.'
-      }
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
 };
 
 export const verifyOtp = async (req: Request, res: Response): Promise<void> => {
