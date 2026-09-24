@@ -35,13 +35,38 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Health Check Endpoint
-app.get('/api/v1/health', (req: Request, res: Response) => {
+// Root & Welcome Endpoint
+app.get('/', (req: Request, res: Response) => {
+  res.status(200).json({
+    success: true,
+    message: '🌿 Welcome to NATUREX Climate & Nature Impact Platform Backend API',
+    status: 'ONLINE',
+    version: '1.0.0',
+    documentation: {
+      healthCheck: '/api/v1/health',
+      apiBase: '/api/v1'
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Health Check Endpoints
+app.get(['/health', '/api/v1/health'], (req: Request, res: Response) => {
   res.status(200).json({
     success: true,
     status: 'ONLINE',
     service: 'NATUREX Climate & Nature Impact Platform Backend',
     timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/api/v1', (req: Request, res: Response) => {
+  res.status(200).json({
+    success: true,
+    message: 'NATUREX API v1 is operational',
+    version: '1.0.0',
+    totalModules: 25,
+    status: 'ONLINE'
   });
 });
 
