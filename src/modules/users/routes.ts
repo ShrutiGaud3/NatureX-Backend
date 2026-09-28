@@ -23,6 +23,8 @@ const router = Router();
 // User Self Profile Routes (Screen F06, F02, F34)
 router.get('/profile', authenticate, requireActiveUser, getProfile);
 router.put('/profile', authenticate, requireActiveUser, validateUpdateProfile, updateProfile);
+router.post('/profile', authenticate, requireActiveUser, validateUpdateProfile, updateProfile);
+router.patch('/profile', authenticate, requireActiveUser, validateUpdateProfile, updateProfile);
 router.patch('/profile/language', authenticate, requireActiveUser, validateUpdateLanguage, updateLanguage);
 
 // Admin & Scoped Management Routes

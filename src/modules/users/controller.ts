@@ -5,9 +5,15 @@ import { AuthRequest } from '../auth/middleware';
 
 export const getProfile = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const user = await User.findById(req.user?.id).populate('organizationId', 'name type status');
+    let user = (req as any).activeUser;
+    if (!user && req.user?.id && mongoose.Types.ObjectId.isValid(req.user.id)) {
+      user = await User.findById(req.user.id).populate('organizationId', 'name type status');
+    }
+    if (!user && req.user?.phone) {
+      user = await User.findOne({ phone: req.user.phone }).populate('organizationId', 'name type status');
+    }
     if (!user) {
-      res.status(404).json({ success: false, message: 'User profile not found' });
+      res.status(401).json({ success: false, message: 'User profile not found. Please log in again.' });
       return;
     }
     res.status(200).json({ success: true, data: user });
@@ -37,9 +43,14 @@ export const updateProfile = async (req: AuthRequest, res: Response): Promise<vo
     let age = providedAge;
     if (dob && !age) {
       const birthDate = new Date(dob);
-      const diff = Date.now() - birthDate.getTime();
-      age = Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
+      if (!isNaN(birthDate.getTime())) {
+        const diff = Date.now() - birthDate.getTime();
+        age = Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
+      }
     }
+
+    const locVillage = village || city || '';
+    const locCity = city || village || '';
 
     const updateFields: any = {
       fullName,
@@ -48,8 +59,8 @@ export const updateProfile = async (req: AuthRequest, res: Response): Promise<vo
       dob,
       age,
       gender,
-      village,
-      city,
+      village: locVillage,
+      city: locCity,
       district,
       state,
       pincode,
@@ -61,14 +72,25 @@ export const updateProfile = async (req: AuthRequest, res: Response): Promise<vo
       if (updateFields[key] === undefined) delete updateFields[key];
     });
 
-    const user = await User.findByIdAndUpdate(
-      req.user?.id,
-      { $set: updateFields },
-      { new: true }
-    );
+    let user = (req as any).activeUser;
+    if (user) {
+      Object.assign(user, updateFields);
+      await user.save();
+    } else {
+      if (req.user?.id && mongoose.Types.ObjectId.isValid(req.user.id)) {
+        user = await User.findByIdAndUpdate(req.user.id, { $set: updateFields }, { new: true });
+      }
+      if (!user && req.user?.phone) {
+        user = await User.findOneAndUpdate(
+          { phone: req.user.phone },
+          { $set: updateFields },
+          { new: true, upsert: true }
+        );
+      }
+    }
 
     if (!user) {
-      res.status(404).json({ success: false, message: 'User not found' });
+      res.status(401).json({ success: false, message: 'User not found. Please log in again.' });
       return;
     }
 

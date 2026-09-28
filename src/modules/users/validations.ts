@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 
 export const validateUpdateProfile = (req: Request, res: Response, next: NextFunction): void => {
-  const { fullName, village, district, state, isDraft = false } = req.body;
+  const { fullName, village, city, district, state, isDraft = false } = req.body;
 
   // If user is completing profile (not saving as draft), validate mandatory fields (Document Section 4.1 F06)
   if (!isDraft) {
@@ -12,10 +12,12 @@ export const validateUpdateProfile = (req: Request, res: Response, next: NextFun
       });
       return;
     }
-    if (!village || !district || !state) {
+    const locVillage = village || city;
+    const locDistrict = district || city;
+    if (!locVillage || !locDistrict || !state) {
       res.status(400).json({
         success: false,
-        message: 'Village, District, and State are mandatory to complete profile.'
+        message: 'Village/City, District, and State are mandatory to complete profile.'
       });
       return;
     }
