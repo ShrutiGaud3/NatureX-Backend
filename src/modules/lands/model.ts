@@ -32,6 +32,9 @@ export interface ILand extends Document {
   reviewedBy?: mongoose.Types.ObjectId;
   reviewedAt?: Date;
   documents?: ILandDocumentRef[];
+  polygonCoordinates?: [number, number][];
+  polygonPoints?: { lat: number; lng: number }[];
+  centerCoordinates?: [number, number];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -84,7 +87,10 @@ const LandSchema = new Schema<ILand>(
     rejectionReason: { type: String },
     reviewedBy: { type: Schema.Types.ObjectId, ref: 'User' },
     reviewedAt: { type: Date },
-    documents: [LandDocumentRefSchema]
+    documents: [LandDocumentRefSchema],
+    polygonCoordinates: { type: [[Number]], default: [] },
+    polygonPoints: [{ lat: Number, lng: Number }],
+    centerCoordinates: { type: [Number], default: [] }
   },
   { timestamps: true }
 );

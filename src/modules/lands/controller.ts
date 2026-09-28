@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import mongoose from 'mongoose';
 import { Land } from './model';
+import { Notification } from '../notifications/model';
 import { AuthRequest } from '../auth/middleware';
 
 const CONVERSION_ACRES_TO_HA = 0.404686;
@@ -22,7 +23,10 @@ export const createLand = async (req: AuthRequest, res: Response): Promise<void>
       state,
       pincode,
       areaInAcres,
-      documents
+      documents,
+      polygonCoordinates,
+      polygonPoints,
+      centerCoordinates
     } = req.body;
 
     const acres = Number(areaInAcres);
@@ -31,6 +35,21 @@ export const createLand = async (req: AuthRequest, res: Response): Promise<void>
 
     const finalKhasra = khasraNumber ? String(khasraNumber).trim() : (surveyNumber ? String(surveyNumber).trim() : undefined);
     const finalSurvey = surveyNumber ? String(surveyNumber).trim() : (khasraNumber ? String(khasraNumber).trim() : undefined);
+
+    let finalPolygonPoints = polygonPoints || [];
+    let finalPolygonCoords = polygonCoordinates || [];
+    if (finalPolygonCoords.length === 0 && Array.isArray(finalPolygonPoints) && finalPolygonPoints.length > 0) {
+      finalPolygonCoords = finalPolygonPoints.map((p: any) => [Number(p.lat), Number(p.lng)]);
+    } else if (finalPolygonPoints.length === 0 && Array.isArray(finalPolygonCoords) && finalPolygonCoords.length > 0) {
+      finalPolygonPoints = finalPolygonCoords.map((c: any) => ({ lat: Number(c[0]), lng: Number(c[1]) }));
+    }
+
+    let finalCenter = centerCoordinates;
+    if ((!finalCenter || finalCenter.length < 2) && finalPolygonCoords.length > 0) {
+      const avgLat = finalPolygonCoords.reduce((acc: number, c: any) => acc + Number(c[0]), 0) / finalPolygonCoords.length;
+      const avgLng = finalPolygonCoords.reduce((acc: number, c: any) => acc + Number(c[1]), 0) / finalPolygonCoords.length;
+      finalCenter = [parseFloat(avgLat.toFixed(6)), parseFloat(avgLng.toFixed(6))];
+    }
 
     const land = await Land.create({
       userId: req.user?.id,
@@ -51,7 +70,10 @@ export const createLand = async (req: AuthRequest, res: Response): Promise<void>
       areaInHectares,
       calculatedAreaSqM,
       status: 'draft',
-      documents: documents || []
+      documents: documents || [],
+      polygonCoordinates: finalPolygonCoords,
+      polygonPoints: finalPolygonPoints,
+      centerCoordinates: finalCenter
     });
 
     res.status(201).json({
@@ -168,7 +190,15 @@ export const updateLand = async (req: AuthRequest, res: Response): Promise<void>
       state,
       pincode,
       areaInAcres,
-      documents
+      documents,
+      status,
+      hasConflict,
+      conflictNotes,
+      clarificationReason,
+      rejectionReason,
+      polygonCoordinates,
+      polygonPoints,
+      centerCoordinates
     } = req.body;
 
     const updateFields: any = {};
@@ -188,6 +218,29 @@ export const updateLand = async (req: AuthRequest, res: Response): Promise<void>
     if (pincode !== undefined) updateFields.pincode = pincode.trim();
     if (documents) updateFields.documents = documents;
 
+    if (status) {
+      updateFields.status = status;
+      if (status === 'approved') {
+        updateFields.reviewedBy = req.user?.id;
+        updateFields.reviewedAt = new Date();
+        updateFields.hasConflict = false;
+      }
+    }
+    if (hasConflict !== undefined) updateFields.hasConflict = Boolean(hasConflict);
+    if (conflictNotes !== undefined) updateFields.conflictNotes = conflictNotes;
+    if (clarificationReason !== undefined) updateFields.clarificationReason = clarificationReason;
+    if (rejectionReason !== undefined) updateFields.rejectionReason = rejectionReason;
+
+    if (polygonCoordinates && Array.isArray(polygonCoordinates) && polygonCoordinates.length > 0) {
+      updateFields.polygonCoordinates = polygonCoordinates;
+    }
+    if (polygonPoints && Array.isArray(polygonPoints) && polygonPoints.length > 0) {
+      updateFields.polygonPoints = polygonPoints;
+    }
+    if (centerCoordinates && Array.isArray(centerCoordinates) && centerCoordinates.length >= 2) {
+      updateFields.centerCoordinates = centerCoordinates;
+    }
+
     if (areaInAcres !== undefined) {
       const acres = Number(areaInAcres);
       updateFields.areaInAcres = acres;
@@ -204,6 +257,29 @@ export const updateLand = async (req: AuthRequest, res: Response): Promise<void>
     if (!land) {
       res.status(404).json({ success: false, message: 'Land record not found' });
       return;
+    }
+
+    // Automatically send notification to farmer when status becomes approved or rejected
+    if (land.userId && (status === 'approved' || status === 'rejected')) {
+      try {
+        const isApproved = status === 'approved';
+        await Notification.create({
+          recipientUserId: land.userId,
+          senderUserId: req.user?.id,
+          eventGroup: 'land',
+          eventType: isApproved ? 'land_approved' : 'land_rejected',
+          title: isApproved ? 'भूमि पार्सल स्वीकृत / Land Parcel Approved' : 'भूमि पार्सल अस्वीकृत / Land Rejected',
+          message: isApproved
+            ? `बधाई हो! आपका भूमि पार्सल "${land.landName}" (खसरा: ${land.khasraNumber || land.surveyNumber}, ${land.district}) व्यवस्थापक द्वारा पूर्णतः स्वीकृत कर दिया गया है। अब आप प्रोजेक्ट आवेदन कर सकते हैं।`
+            : `आपका भूमि पार्सल "${land.landName}" अस्वीकृत कर दिया गया है। ${rejectionReason ? `कारण: ${rejectionReason}` : ''}`,
+          priority: 'high',
+          channel: 'in_app',
+          deepLink: 'land_status',
+          data: { landId: land._id, status }
+        });
+      } catch (notifErr) {
+        console.error('[Notification error in updateLand]:', notifErr);
+      }
     }
 
     res.status(200).json({
@@ -362,6 +438,30 @@ export const reviewLand = async (req: AuthRequest, res: Response): Promise<void>
     if (!land) {
       res.status(404).json({ success: false, message: 'Land record not found' });
       return;
+    }
+
+    // Automatically send notification to farmer
+    const recipientId = (land.userId as any)?._id || land.userId;
+    if (recipientId && (targetStatus === 'approved' || targetStatus === 'rejected')) {
+      try {
+        const isApproved = targetStatus === 'approved';
+        await Notification.create({
+          recipientUserId: recipientId,
+          senderUserId: req.user?.id,
+          eventGroup: 'land',
+          eventType: isApproved ? 'land_approved' : 'land_rejected',
+          title: isApproved ? 'भूमि पार्सल स्वीकृत / Land Parcel Approved' : 'भूमि पार्सल अस्वीकृत / Land Rejected',
+          message: isApproved
+            ? `बधाई हो! आपका भूमि पार्सल "${land.landName}" (खसरा: ${land.khasraNumber || land.surveyNumber}, ${land.district}) व्यवस्थापक द्वारा पूर्णतः स्वीकृत कर दिया गया है। अब आप प्रोजेक्ट आवेदन कर सकते हैं।`
+            : `आपका भूमि पार्सल "${land.landName}" अस्वीकृत कर दिया गया है। ${reason ? `कारण: ${reason}` : ''}`,
+          priority: 'high',
+          channel: 'in_app',
+          deepLink: 'land_status',
+          data: { landId: land._id, status: targetStatus }
+        });
+      } catch (notifErr) {
+        console.error('[Notification error in reviewLand]:', notifErr);
+      }
     }
 
     res.status(200).json({
