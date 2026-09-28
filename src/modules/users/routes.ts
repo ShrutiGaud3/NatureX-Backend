@@ -5,7 +5,9 @@ import {
   updateLanguage,
   getUserById,
   getAllUsers,
-  updateUserStatus
+  updateUserStatus,
+  createUser,
+  deleteUser
 } from './controller';
 import {
   validateUpdateProfile,
@@ -25,7 +27,9 @@ router.patch('/profile/language', authenticate, requireActiveUser, validateUpdat
 
 // Admin & Scoped Management Routes
 router.get('/', authenticate, requireRole(['admin', 'project_developer', 'organization']), getAllUsers);
+router.post('/', authenticate, requireRole(['admin']), createUser);
 router.get('/:id', authenticate, requireSelfOrAdmin, getUserById);
 router.patch('/:id/status', authenticate, requireRole(['admin']), validateUpdateStatus, updateUserStatus);
+router.delete('/:id', authenticate, requireRole(['admin']), deleteUser);
 
 export default router;

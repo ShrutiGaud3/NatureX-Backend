@@ -7,7 +7,8 @@ import {
   getKycQueue,
   getKycById,
   reviewKyc,
-  getKycStats
+  getKycStats,
+  deleteKyc
 } from './controller';
 import {
   validateKycDraft,
@@ -31,6 +32,8 @@ router.get('/stats', authenticate, requireRole(['admin']), getKycStats);
 router.get('/admin/queue', authenticate, requireRole(['admin']), getKycQueue);
 router.get('/admin/:id', authenticate, requireRole(['admin']), getKycById);
 router.patch('/admin/:id/review', authenticate, requireRole(['admin']), validateKycReview, reviewKyc);
+router.delete('/admin/:id', authenticate, requireRole(['admin']), deleteKyc);
+router.delete('/:id', authenticate, requireRole(['admin']), deleteKyc);
 
 export default router;
 

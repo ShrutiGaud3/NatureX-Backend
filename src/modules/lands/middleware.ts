@@ -2,12 +2,19 @@ import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../auth/middleware';
 import { Land } from './model';
 
+import mongoose from 'mongoose';
+
 export const requireLandOwnerOrAdmin = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (req.user?.role === 'admin') {
+    if (req.user?.role === 'admin' || req.user?.role === 'super_admin') {
       return next();
     }
-    const land = await Land.findById(req.params.id);
+    const landId = req.params.id;
+    if (!mongoose.Types.ObjectId.isValid(landId)) {
+      res.status(404).json({ success: false, message: 'Land parcel not found.' });
+      return;
+    }
+    const land = await Land.findById(landId);
     if (!land) {
       res.status(404).json({ success: false, message: 'Land parcel not found.' });
       return;
@@ -30,12 +37,12 @@ export const requireLandOwnerOrAdmin = async (req: AuthRequest, res: Response, n
 
 export const requireApprovedLand = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (req.user?.role === 'admin') {
+    if (req.user?.role === 'admin' || req.user?.role === 'super_admin') {
       return next();
     }
     const landId = req.params.id || req.body.landId;
-    if (!landId) {
-      res.status(400).json({ success: false, message: 'Land ID is required' });
+    if (!landId || !mongoose.Types.ObjectId.isValid(landId)) {
+      res.status(400).json({ success: false, message: 'Valid Land ID is required' });
       return;
     }
     const land = await Land.findById(landId);

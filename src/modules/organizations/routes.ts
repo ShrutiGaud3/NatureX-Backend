@@ -13,7 +13,8 @@ import {
   getOrgMembers,
   removeTeamMember,
   getAdminOrgQueue,
-  adminReviewOrg
+  adminReviewOrg,
+  deleteOrg
 } from './controller';
 import {
   validateCreateOrg,
@@ -50,5 +51,6 @@ router.delete('/:id/members/:memberId', authenticate, requireOrgAccess, removeTe
 // Super Admin Review Queue (Screen A04)
 router.get('/admin/queue', authenticate, requireRole(['admin']), getAdminOrgQueue);
 router.patch('/admin/:id/review', authenticate, requireRole(['admin']), validateOrgReview, adminReviewOrg);
+router.delete('/:id', authenticate, requireRole(['admin']), deleteOrg);
 
 export default router;

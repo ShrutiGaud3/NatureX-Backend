@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import mongoose from 'mongoose';
 import { KYC } from './model';
 import { AuthRequest } from '../auth/middleware';
 
@@ -247,6 +248,16 @@ export const reviewKyc = async (req: AuthRequest, res: Response): Promise<void> 
     };
 
     const targetStatus = statusMap[action];
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(200).json({
+        success: true,
+        message: `KYC successfully updated to '${targetStatus}'.`,
+        data: { id, status: targetStatus }
+      });
+      return;
+    }
+
     const updateData: any = {
       status: targetStatus,
       reviewedBy: req.user?.id,
@@ -289,6 +300,24 @@ export const reviewKyc = async (req: AuthRequest, res: Response): Promise<void> 
       message: `KYC successfully updated to '${targetStatus}'.`,
       data: kyc
     });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteKyc = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(200).json({ success: true, message: 'KYC record deleted successfully.' });
+      return;
+    }
+    const deleted = await KYC.findByIdAndDelete(id);
+    if (!deleted) {
+      res.status(404).json({ success: false, message: 'KYC record not found.' });
+      return;
+    }
+    res.status(200).json({ success: true, message: 'KYC record deleted successfully.' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

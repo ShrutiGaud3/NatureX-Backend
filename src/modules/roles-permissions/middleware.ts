@@ -4,7 +4,18 @@ import { Role } from './model';
 
 export const requireRole = (allowedRoles: string[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction): void => {
-    if (!req.user || !allowedRoles.includes(req.user.role)) {
+    if (!req.user) {
+      res.status(401).json({ success: false, message: 'Authentication required.' });
+      return;
+    }
+
+    const role = req.user.role;
+    const isAdmin = role === 'admin' || role === 'super_admin';
+    const isAllowed =
+      allowedRoles.includes(role) ||
+      (isAdmin && (allowedRoles.includes('admin') || allowedRoles.includes('super_admin')));
+
+    if (!isAllowed) {
       res.status(403).json({
         success: false,
         message: `Access denied: Requires one of [${allowedRoles.join(', ')}] role.`
@@ -23,8 +34,8 @@ export const requirePermission = (requiredPermission: string) => {
         return;
       }
 
-      // Super Admin always has full access
-      if (req.user.role === 'admin') {
+      // Super Admin and Admin always have full access
+      if (req.user.role === 'admin' || req.user.role === 'super_admin') {
         return next();
       }
 

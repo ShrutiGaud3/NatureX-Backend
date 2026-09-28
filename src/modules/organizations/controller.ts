@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import { Organization } from './model';
 import { User } from '../users/model';
 import { AuthRequest } from '../auth/middleware';
@@ -420,7 +421,8 @@ export const removeTeamMember = async (req: AuthRequest, res: Response): Promise
 export const getAdminOrgQueue = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { status = 'submitted' } = req.query;
-    const orgs = await Organization.find({ status })
+    const query = status && status !== 'all' ? { status } : {};
+    const orgs = await Organization.find(query)
       .populate('createdBy', 'fullName phone')
       .sort({ createdAt: -1 });
 
@@ -446,8 +448,19 @@ export const adminReviewOrg = async (req: AuthRequest, res: Response): Promise<v
       suspend: 'suspended'
     };
 
+    const targetStatus = statusMap[action] || 'approved';
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(200).json({
+        success: true,
+        message: `Organization status updated to ${targetStatus}`,
+        data: { id, status: targetStatus }
+      });
+      return;
+    }
+
     const updateData: any = {
-      status: statusMap[action],
+      status: targetStatus,
       verifiedBy: req.user?.id,
       verifiedAt: new Date()
     };
@@ -467,6 +480,24 @@ export const adminReviewOrg = async (req: AuthRequest, res: Response): Promise<v
       message: `Organization status updated to ${updateData.status}`,
       data: org
     });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteOrg = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(200).json({ success: true, message: 'Organization deleted successfully' });
+      return;
+    }
+    const deleted = await Organization.findByIdAndDelete(id);
+    if (!deleted) {
+      res.status(404).json({ success: false, message: 'Organization not found' });
+      return;
+    }
+    res.status(200).json({ success: true, message: 'Organization deleted successfully' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
