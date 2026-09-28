@@ -29,13 +29,22 @@ const UserSchema = new Schema<IUser>(
     photoUrl: { type: String },
     dob: { type: Date },
     age: { type: Number },
-    gender: { type: String, enum: ['male', 'female', 'other'] },
+    gender: { 
+      type: String, 
+      enum: ['male', 'female', 'other', 'MALE', 'FEMALE', 'OTHER', 'Male', 'Female', 'Other'],
+      set: (val: string) => val ? val.toLowerCase() : val 
+    },
     village: { type: String },
     city: { type: String },
     district: { type: String },
     state: { type: String },
     pincode: { type: String },
-    preferredLanguage: { type: String, default: 'en', enum: ['en', 'hi'] },
+    preferredLanguage: { 
+      type: String, 
+      default: 'en', 
+      enum: ['en', 'hi', 'EN', 'HI'],
+      set: (val: string) => val ? val.toLowerCase() : val 
+    },
     role: {
       type: String,
       default: 'unassigned',
@@ -43,7 +52,8 @@ const UserSchema = new Schema<IUser>(
     },
     status: {
       type: String,
-      enum: ['draft', 'submitted', 'active', 'suspended'],
+      enum: ['draft', 'submitted', 'active', 'suspended', 'DRAFT', 'SUBMITTED', 'ACTIVE', 'SUSPENDED'],
+      set: (val: string) => val ? val.toLowerCase() : val,
       default: 'draft'
     },
     organizationId: { type: Schema.Types.ObjectId, ref: 'Organization' }

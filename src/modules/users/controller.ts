@@ -58,7 +58,7 @@ export const updateProfile = async (req: AuthRequest, res: Response): Promise<vo
       photoUrl,
       dob,
       age,
-      gender,
+      gender: typeof gender === 'string' ? gender.toLowerCase() : gender,
       village: locVillage,
       city: locCity,
       district,
