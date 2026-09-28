@@ -274,6 +274,11 @@ export const updateEvidence = async (req: AuthRequest, res: Response): Promise<v
     const { title, description, category, tags, metadata } = req.body;
     const updateData: any = {};
 
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      res.status(404).json({ success: false, message: 'Evidence record not found.' });
+      return;
+    }
+
     if (title) updateData.title = title.trim();
     if (description !== undefined) updateData.description = description.trim();
     if (category) updateData.category = category;
@@ -305,6 +310,11 @@ export const updateEvidence = async (req: AuthRequest, res: Response): Promise<v
 export const reviewEvidence = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { action, status, notes, rejectionReason } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      res.status(404).json({ success: false, message: 'Evidence record not found.' });
+      return;
+    }
 
     const statusMap: Record<string, string> = {
       verify: 'verified',
@@ -352,7 +362,14 @@ export const deleteEvidence = async (req: AuthRequest, res: Response): Promise<v
   try {
     const { permanent } = req.query;
 
-    if (permanent === 'true' && req.user?.role === 'admin') {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      res.status(404).json({ success: false, message: 'Evidence record not found.' });
+      return;
+    }
+
+    const isAdmin = ['admin', 'super_admin'].includes(req.user?.role || '');
+
+    if (permanent === 'true' && isAdmin) {
       const deleted = await Evidence.findByIdAndDelete(req.params.id);
       if (!deleted) {
         res.status(404).json({ success: false, message: 'Evidence record not found.' });
