@@ -127,7 +127,6 @@ const MrvRecordSchema = new Schema<IMrvRecord>(
 );
 
 MrvRecordSchema.index({ projectId: 1, monitoringCycleNumber: 1 });
-MrvRecordSchema.index({ status: 1 });
 
 export const MrvRecord = mongoose.model<IMrvRecord>('MrvRecord', MrvRecordSchema);
 

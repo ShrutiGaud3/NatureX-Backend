@@ -27,6 +27,7 @@ import supportRoutes from './modules/support/routes';
 import reportRoutes from './modules/reports/routes';
 import auditRoutes from './modules/audit/routes';
 import adminRoutes from './modules/admin/routes';
+import uploadRoutes from './modules/upload/routes';
 
 const app: Application = express();
 
@@ -97,6 +98,7 @@ app.use('/api/v1/support', supportRoutes);
 app.use('/api/v1/reports', reportRoutes);
 app.use('/api/v1/audit', auditRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use(['/api/v1/upload', '/upload'], uploadRoutes);
 
 // 404 Route Handler
 app.use((req: Request, res: Response) => {
