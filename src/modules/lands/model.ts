@@ -10,6 +10,7 @@ export interface ILand extends Document {
   userId: mongoose.Types.ObjectId;
   organizationId?: mongoose.Types.ObjectId;
   landName: string;
+  khasraNumber?: string;
   surveyNumber?: string;
   ownershipType: 'owned' | 'leased' | 'community' | 'shared';
   currentCrop?: string;
@@ -49,7 +50,8 @@ const LandSchema = new Schema<ILand>(
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', index: true },
     landName: { type: String, required: true, trim: true },
-    surveyNumber: { type: String, trim: true },
+    khasraNumber: { type: String, trim: true, index: true },
+    surveyNumber: { type: String, trim: true, index: true },
     ownershipType: {
       type: String,
       enum: ['owned', 'leased', 'community', 'shared'],
