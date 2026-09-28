@@ -10,8 +10,8 @@ export const createNotification = async (req: Request, res: Response): Promise<v
     const senderId = sender?.id || sender?._id;
     const {
       recipientUserId,
-      eventGroup,
-      eventType,
+      eventGroup = 'account',
+      eventType = 'profile_status',
       title,
       message,
       priority = 'medium',
@@ -21,9 +21,29 @@ export const createNotification = async (req: Request, res: Response): Promise<v
       expiresAt
     } = req.body;
 
+    let targetRecipientId: mongoose.Types.ObjectId | null = null;
+    if (recipientUserId && mongoose.Types.ObjectId.isValid(recipientUserId)) {
+      targetRecipientId = new mongoose.Types.ObjectId(recipientUserId);
+    } else if (recipientUserId) {
+      const cleanPhone = String(recipientUserId).replace(/\D/g, '').slice(-10);
+      if (cleanPhone.length >= 10) {
+        const u = await User.findOne({ phone: cleanPhone });
+        if (u) targetRecipientId = u._id as mongoose.Types.ObjectId;
+      }
+    }
+
+    if (!targetRecipientId) {
+      res.status(404).json({ success: false, message: 'Recipient user not found' });
+      return;
+    }
+
+    const safeSenderId = senderId && mongoose.Types.ObjectId.isValid(senderId)
+      ? new mongoose.Types.ObjectId(senderId)
+      : undefined;
+
     const notification = await Notification.create({
-      recipientUserId: new mongoose.Types.ObjectId(recipientUserId),
-      senderUserId: senderId ? new mongoose.Types.ObjectId(senderId) : undefined,
+      recipientUserId: targetRecipientId,
+      senderUserId: safeSenderId,
       eventGroup,
       eventType,
       title,
@@ -114,10 +134,23 @@ export const broadcastNotification = async (req: Request, res: Response): Promis
 export const getMyNotifications = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = (req as any).user;
-    const userId = user?.id || user?._id;
+    let userId = user?.id || user?._id;
 
-    if (!userId) {
-      res.status(401).json({ success: false, message: 'User not authenticated' });
+    if ((!userId || !mongoose.Types.ObjectId.isValid(userId)) && user?.phone) {
+      const u = await User.findOne({ phone: user.phone });
+      if (u) userId = u._id;
+    }
+
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+      res.status(200).json({
+        success: true,
+        unreadCount: 0,
+        total: 0,
+        page: 1,
+        limit: 20,
+        totalPages: 0,
+        data: []
+      });
       return;
     }
 
@@ -133,8 +166,9 @@ export const getMyNotifications = async (req: Request, res: Response): Promise<v
       sortOrder = 'desc'
     } = req.query;
 
+    const recipientObjId = new mongoose.Types.ObjectId(userId);
     const query: any = {
-      recipientUserId: new mongoose.Types.ObjectId(userId),
+      recipientUserId: recipientObjId,
       isArchived: false
     };
 
@@ -166,7 +200,7 @@ export const getMyNotifications = async (req: Request, res: Response): Promise<v
         .limit(limitNum),
       Notification.countDocuments(query),
       Notification.countDocuments({
-        recipientUserId: new mongoose.Types.ObjectId(userId),
+        recipientUserId: recipientObjId,
         isRead: false,
         isArchived: false
       })
@@ -190,10 +224,15 @@ export const getMyNotifications = async (req: Request, res: Response): Promise<v
 export const getUnreadCount = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = (req as any).user;
-    const userId = user?.id || user?._id;
+    let userId = user?.id || user?._id;
 
-    if (!userId) {
-      res.status(401).json({ success: false, message: 'User not authenticated' });
+    if ((!userId || !mongoose.Types.ObjectId.isValid(userId)) && user?.phone) {
+      const u = await User.findOne({ phone: user.phone });
+      if (u) userId = u._id;
+    }
+
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+      res.status(200).json({ success: true, unreadCount: 0 });
       return;
     }
 
@@ -203,10 +242,7 @@ export const getUnreadCount = async (req: Request, res: Response): Promise<void>
       isArchived: false
     });
 
-    res.status(200).json({
-      success: true,
-      unreadCount
-    });
+    res.status(200).json({ success: true, unreadCount });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
