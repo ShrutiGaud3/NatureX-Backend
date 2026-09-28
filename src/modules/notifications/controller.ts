@@ -23,13 +23,26 @@ export const createNotification = async (req: Request, res: Response): Promise<v
 
     let targetRecipientId: mongoose.Types.ObjectId | null = null;
     if (recipientUserId && mongoose.Types.ObjectId.isValid(recipientUserId)) {
-      targetRecipientId = new mongoose.Types.ObjectId(recipientUserId);
-    } else if (recipientUserId) {
+      const u = await User.findById(recipientUserId);
+      if (u) targetRecipientId = u._id as mongoose.Types.ObjectId;
+    }
+
+    if (!targetRecipientId && recipientUserId) {
       const cleanPhone = String(recipientUserId).replace(/\D/g, '').slice(-10);
       if (cleanPhone.length >= 10) {
-        const u = await User.findOne({ phone: cleanPhone });
+        const u = await User.findOne({
+          $or: [
+            { phone: cleanPhone },
+            { phone: `+91${cleanPhone}` },
+            { phone: new RegExp(cleanPhone + '$') }
+          ]
+        });
         if (u) targetRecipientId = u._id as mongoose.Types.ObjectId;
       }
+    }
+
+    if (!targetRecipientId && recipientUserId && mongoose.Types.ObjectId.isValid(recipientUserId)) {
+      targetRecipientId = new mongoose.Types.ObjectId(recipientUserId);
     }
 
     if (!targetRecipientId) {

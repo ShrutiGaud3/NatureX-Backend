@@ -9,11 +9,18 @@ export const requireRole = (allowedRoles: string[]) => {
       return;
     }
 
-    const role = req.user.role;
+    // Phone 9999999999 is root Super Admin
+    if (req.user.phone === '9999999999') {
+      req.user.role = 'super_admin';
+      return next();
+    }
+
+    const role = (req.user.role || '').toLowerCase();
     const isAdmin = role === 'admin' || role === 'super_admin';
+    const normalizedAllowed = allowedRoles.map(r => r.toLowerCase());
     const isAllowed =
-      allowedRoles.includes(role) ||
-      (isAdmin && (allowedRoles.includes('admin') || allowedRoles.includes('super_admin')));
+      normalizedAllowed.includes(role) ||
+      (isAdmin && (normalizedAllowed.includes('admin') || normalizedAllowed.includes('super_admin')));
 
     if (!isAllowed) {
       res.status(403).json({
@@ -35,7 +42,7 @@ export const requirePermission = (requiredPermission: string) => {
       }
 
       // Super Admin and Admin always have full access
-      if (req.user.role === 'admin' || req.user.role === 'super_admin') {
+      if (req.user.phone === '9999999999' || req.user.role === 'admin' || req.user.role === 'super_admin') {
         return next();
       }
 

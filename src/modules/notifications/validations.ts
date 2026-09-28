@@ -18,19 +18,23 @@ const VALID_PRIORITIES = ['low', 'medium', 'high', 'urgent'];
 const VALID_CHANNELS = ['in_app', 'push', 'sms', 'email', 'all'];
 
 export const validateCreateNotification = (req: Request, res: Response, next: NextFunction): void => {
-  const { recipientUserId, eventGroup, title, message, priority, channel } = req.body;
+  let { recipientUserId, eventGroup = 'account', title, message, priority = 'medium', channel = 'in_app' } = req.body;
 
   if (!recipientUserId) {
     res.status(400).json({ success: false, message: 'recipientUserId is required' });
     return;
   }
 
-  if (!eventGroup || !VALID_EVENT_GROUPS.includes(eventGroup)) {
-    res.status(400).json({
-      success: false,
-      message: `eventGroup is required and must be one of: ${VALID_EVENT_GROUPS.join(', ')}`
-    });
-    return;
+  eventGroup = String(eventGroup || 'account').toLowerCase();
+  priority = String(priority || 'medium').toLowerCase();
+  channel = String(channel || 'in_app').toLowerCase();
+
+  req.body.eventGroup = eventGroup;
+  req.body.priority = priority;
+  req.body.channel = channel;
+
+  if (!VALID_EVENT_GROUPS.includes(eventGroup)) {
+    req.body.eventGroup = 'account';
   }
 
   if (!title || typeof title !== 'string' || !title.trim()) {
@@ -43,20 +47,12 @@ export const validateCreateNotification = (req: Request, res: Response, next: Ne
     return;
   }
 
-  if (priority && !VALID_PRIORITIES.includes(priority)) {
-    res.status(400).json({
-      success: false,
-      message: `priority must be one of: ${VALID_PRIORITIES.join(', ')}`
-    });
-    return;
+  if (!VALID_PRIORITIES.includes(priority)) {
+    req.body.priority = 'medium';
   }
 
-  if (channel && !VALID_CHANNELS.includes(channel)) {
-    res.status(400).json({
-      success: false,
-      message: `channel must be one of: ${VALID_CHANNELS.join(', ')}`
-    });
-    return;
+  if (!VALID_CHANNELS.includes(channel)) {
+    req.body.channel = 'in_app';
   }
 
   next();
