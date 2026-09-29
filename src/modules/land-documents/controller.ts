@@ -2,6 +2,7 @@ import { Response } from 'express';
 import mongoose from 'mongoose';
 import { LandDocument } from './model';
 import { Land } from '../lands/model';
+import { Notification } from '../notifications/model';
 import { AuthRequest } from '../auth/middleware';
 
 export const uploadDocument = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -214,6 +215,30 @@ export const verifyDocument = async (req: AuthRequest, res: Response): Promise<v
       return;
     }
 
+    // Notify farmer of document verification status
+    const recipientId = (doc.userId as any)?._id || doc.userId;
+    if (recipientId) {
+      try {
+        const isVerified = targetStatus === 'verified';
+        await Notification.create({
+          recipientUserId: recipientId,
+          senderUserId: req.user?.id,
+          eventGroup: 'land',
+          eventType: isVerified ? 'document_verified' : 'document_rejected',
+          title: isVerified ? 'दस्तावेज़ सत्यापित / Document Verified' : 'दस्तावेज़ अस्वीकृत / Document Rejected',
+          message: isVerified
+            ? `आपका भू-अभिलेख दस्तावेज़ "${doc.documentTitle}" व्यवस्थापक द्वारा सत्यापित कर दिया गया है।`
+            : `आपका भू-अभिलेख दस्तावेज़ "${doc.documentTitle}" अस्वीकृत कर दिया गया है। ${reason ? `कारण: ${reason}` : ''}`,
+          priority: 'high',
+          channel: 'in_app',
+          deepLink: 'land_status',
+          data: { docId: doc._id, landId: doc.landId, status: targetStatus }
+        });
+      } catch (notifErr) {
+        console.error('[verifyDocument notification error]:', notifErr);
+      }
+    }
+
     res.status(200).json({
       success: true,
       message: `Document status marked as '${targetStatus}'`,
@@ -226,11 +251,15 @@ export const verifyDocument = async (req: AuthRequest, res: Response): Promise<v
 
 export const getLandDocumentsQueue = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { verificationStatus = 'pending', documentType, page = 1, limit = 20 } = req.query;
+    const { verificationStatus, documentType, page = 1, limit = 50 } = req.query;
     const query: any = {};
 
-    if (verificationStatus) query.verificationStatus = verificationStatus;
-    if (documentType) query.documentType = documentType;
+    if (verificationStatus && verificationStatus !== 'all' && verificationStatus !== 'ALL') {
+      query.verificationStatus = String(verificationStatus).toLowerCase();
+    }
+    if (documentType && documentType !== 'all' && documentType !== 'ALL') {
+      query.documentType = documentType;
+    }
 
     const pageNum = parseInt(String(page), 10) || 1;
     const limitNum = parseInt(String(limit), 10) || 20;

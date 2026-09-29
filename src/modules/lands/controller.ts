@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import mongoose from 'mongoose';
 import { Land } from './model';
+import { LandDocument } from '../land-documents/model';
 import { Notification } from '../notifications/model';
 import { AuthRequest } from '../auth/middleware';
 
@@ -75,6 +76,30 @@ export const createLand = async (req: AuthRequest, res: Response): Promise<void>
       polygonPoints: finalPolygonPoints,
       centerCoordinates: finalCenter
     });
+
+    // Auto-create LandDocument entries in official repository so they appear in admin review queue
+    if (Array.isArray(documents) && documents.length > 0) {
+      for (const d of documents) {
+        try {
+          await LandDocument.create({
+            landId: land._id,
+            userId: req.user?.id,
+            organizationId: req.user?.organizationId,
+            documentType: d.documentType || '7_12_extract',
+            documentTitle: d.documentTitle || `${land.landName} - 7/12 RoR Document`,
+            documentNumber: d.documentNumber || `ROR-${finalKhasra || '101'}`,
+            fileUrl: d.documentUrl || d.fileUrl || 'https://ik.imagekit.io/x3iuqo2n2/lands/sample_712_ror.pdf',
+            fileSizeBytes: d.fileSizeBytes || 2150000,
+            mimeType: d.mimeType || 'application/pdf',
+            issuingAuthority: d.issuingAuthority || `Tehsildar Office, ${district.trim()}`,
+            verificationStatus: 'pending',
+            uploadedAt: new Date()
+          });
+        } catch (docErr) {
+          console.error('[createLand] LandDocument creation error:', docErr);
+        }
+      }
+    }
 
     res.status(201).json({
       success: true,
